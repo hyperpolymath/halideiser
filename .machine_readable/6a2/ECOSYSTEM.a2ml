@@ -6,12 +6,13 @@
   (version "0.1.0")
   (name "halideiser")
   (type "tool")
-  (purpose "Compile image/video pipelines to optimised Halide schedules")
+  (purpose "Compile image/video processing pipelines to optimised Halide schedules — 10-100x speedups without Halide expertise")
 
   (position-in-ecosystem
     (family "-iser acceleration frameworks")
     (meta-framework "iseriser")
     (relationship "sibling")
+    (domain "image and video processing acceleration via Halide")
     (top-3 ("typedqliser" "chapeliser" "verisimiser")))
 
   (related-projects
@@ -27,12 +28,31 @@
     (project "verisimiser"
       (relationship "sibling-priority-3")
       (description "VeriSimDB octad database augmentation"))
+    (project "futharkiser"
+      (relationship "sibling")
+      (description "Futhark GPU array programming — complementary GPU target"))
     (project "squeakwell"
       (relationship "sibling")
       (description "Database recovery via constraint propagation"))
     (project "proven"
       (relationship "dependency")
-      (description "Shared Idris2 verified library"))
+      (description "Shared Idris2 verified library — formal proof infrastructure"))
     (project "typell"
       (relationship "dependency")
-      (description "Type theory engine"))))
+      (description "Type theory engine"))
+    (project "panll"
+      (relationship "integration")
+      (description "Panel framework — pipeline visualisation and schedule explorer"))
+    (project "boj-server"
+      (relationship "integration")
+      (description "Cartridge runtime — remote pipeline compilation")))
+
+  (external-dependencies
+    (project "Halide"
+      (relationship "upstream")
+      (description "Image/video processing DSL by MIT/Google — algorithm/schedule separation")
+      (url "https://halide-lang.org")
+      (license "MIT"))
+    (project "LLVM"
+      (relationship "transitive-dependency")
+      (description "Halide compiles to native code via LLVM backends"))))

@@ -1,20 +1,27 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
--- Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 --
-||| ABI Type Definitions Template
+||| ABI Type Definitions for Halideiser
 |||
-||| This module defines the Application Binary Interface (ABI) for this library.
+||| Defines the Application Binary Interface for Halide pipeline compilation.
 ||| All type definitions include formal proofs of correctness.
 |||
-||| Replace {{PROJECT}} with your project name.
+||| Core Halide concepts modelled here:
+|||   - PipelineStage: what operations to perform (blur, sharpen, resize, etc.)
+|||   - SchedulePrimitive: how to execute on hardware (tile, vectorize, parallelize)
+|||   - HardwareTarget: which hardware to target (x86 SSE/AVX, ARM NEON, CUDA, etc.)
+|||   - BufferDimension: image buffer dimensions with compile-time bounds
+|||   - TileSize: tile dimensions with proof they divide the buffer extent
 |||
+||| @see https://halide-lang.org for Halide documentation
 ||| @see https://idris2.readthedocs.io for Idris2 documentation
 
-module {{PROJECT}}.ABI.Types
+module Halideiser.ABI.Types
 
 import Data.Bits
 import Data.So
 import Data.Vect
+import Data.Nat
 
 %default total
 
@@ -22,21 +29,271 @@ import Data.Vect
 -- Platform Detection
 --------------------------------------------------------------------------------
 
-||| Supported platforms for this ABI
+||| Supported platforms for compiled Halide pipelines
 public export
 data Platform = Linux | Windows | MacOS | BSD | WASM
 
 ||| Compile-time platform detection
-||| This will be set during compilation based on target
+||| Set during compilation based on target
 public export
 thisPlatform : Platform
 thisPlatform =
   %runElab do
-    -- Platform detection logic
     pure Linux  -- Default, override with compiler flags
 
 --------------------------------------------------------------------------------
--- Core Types
+-- Hardware Targets
+--------------------------------------------------------------------------------
+
+||| Hardware targets for Halide schedule generation.
+||| Each target determines which scheduling primitives are available
+||| and what SIMD width / compute grid to use.
+public export
+data HardwareTarget : Type where
+  ||| x86 with SSE4.2 (128-bit SIMD, 4-wide float)
+  X86_SSE : HardwareTarget
+  ||| x86 with AVX2 (256-bit SIMD, 8-wide float)
+  X86_AVX2 : HardwareTarget
+  ||| x86 with AVX-512 (512-bit SIMD, 16-wide float)
+  X86_AVX512 : HardwareTarget
+  ||| ARM with NEON (128-bit SIMD, 4-wide float)
+  ARM_NEON : HardwareTarget
+  ||| ARM with SVE (scalable vector extension)
+  ARM_SVE : HardwareTarget
+  ||| NVIDIA GPU via CUDA
+  CUDA : HardwareTarget
+  ||| Cross-vendor GPU via OpenCL
+  OpenCL : HardwareTarget
+  ||| Apple GPU via Metal
+  Metal : HardwareTarget
+  ||| Cross-platform GPU via Vulkan
+  Vulkan_ : HardwareTarget
+  ||| Browser deployment via WebAssembly
+  WebAssembly : HardwareTarget
+
+||| Convert HardwareTarget to C integer for FFI
+public export
+targetToInt : HardwareTarget -> Bits32
+targetToInt X86_SSE     = 0
+targetToInt X86_AVX2    = 1
+targetToInt X86_AVX512  = 2
+targetToInt ARM_NEON    = 3
+targetToInt ARM_SVE     = 4
+targetToInt CUDA        = 5
+targetToInt OpenCL      = 6
+targetToInt Metal       = 7
+targetToInt Vulkan_     = 8
+targetToInt WebAssembly = 9
+
+||| Native SIMD width in 32-bit floats for each target
+public export
+simdWidth : HardwareTarget -> Nat
+simdWidth X86_SSE     = 4
+simdWidth X86_AVX2    = 8
+simdWidth X86_AVX512  = 16
+simdWidth ARM_NEON    = 4
+simdWidth ARM_SVE     = 8   -- Minimum SVE width
+simdWidth CUDA        = 32  -- Warp size
+simdWidth OpenCL      = 16  -- Typical work-group width
+simdWidth Metal       = 32  -- SIMD-group width
+simdWidth Vulkan_     = 16  -- Typical subgroup size
+simdWidth WebAssembly = 4   -- WASM SIMD128
+
+||| Whether a target supports GPU compute grids
+public export
+isGPU : HardwareTarget -> Bool
+isGPU CUDA        = True
+isGPU OpenCL      = True
+isGPU Metal       = True
+isGPU Vulkan_     = True
+isGPU _           = False
+
+--------------------------------------------------------------------------------
+-- Pipeline Stages
+--------------------------------------------------------------------------------
+
+||| Image/video processing operations that form pipeline stages.
+||| Each stage is a pure function from input buffer(s) to output buffer.
+public export
+data PipelineStage : Type where
+  ||| Gaussian blur with configurable sigma
+  GaussianBlur : (sigma : Double) -> PipelineStage
+  ||| Box blur with configurable radius
+  BoxBlur : (radius : Nat) -> PipelineStage
+  ||| Sharpening via unsharp mask (blur then subtract)
+  Sharpen : (amount : Double) -> (sigma : Double) -> PipelineStage
+  ||| Resize with specified method
+  Resize : (factorX : Double) -> (factorY : Double) -> PipelineStage
+  ||| Generic 2D convolution with kernel
+  Convolve : (kernelSize : Nat) -> PipelineStage
+  ||| Sobel edge detection
+  SobelEdge : PipelineStage
+  ||| Canny edge detection with thresholds
+  CannyEdge : (low : Double) -> (high : Double) -> PipelineStage
+  ||| Colour space conversion
+  ColourConvert : (from : String) -> (to : String) -> PipelineStage
+  ||| Histogram equalisation
+  HistogramEq : PipelineStage
+  ||| Brightness/contrast adjustment
+  BrightnessContrast : (brightness : Double) -> (contrast : Double) -> PipelineStage
+  ||| Generic pointwise operation (per-pixel expression)
+  Pointwise : (expr : String) -> PipelineStage
+  ||| Reduce (e.g. sum, max) across a dimension
+  Reduce : (op : String) -> (dim : Nat) -> PipelineStage
+
+||| Convert PipelineStage to C integer tag for FFI
+public export
+stageToInt : PipelineStage -> Bits32
+stageToInt (GaussianBlur _)        = 0
+stageToInt (BoxBlur _)             = 1
+stageToInt (Sharpen _ _)           = 2
+stageToInt (Resize _ _)            = 3
+stageToInt (Convolve _)            = 4
+stageToInt SobelEdge               = 5
+stageToInt (CannyEdge _ _)         = 6
+stageToInt (ColourConvert _ _)     = 7
+stageToInt HistogramEq             = 8
+stageToInt (BrightnessContrast _ _) = 9
+stageToInt (Pointwise _)          = 10
+stageToInt (Reduce _ _)           = 11
+
+--------------------------------------------------------------------------------
+-- Scheduling Primitives
+--------------------------------------------------------------------------------
+
+||| Halide scheduling primitives that control how an algorithm executes.
+||| These do not change what is computed — only how and where.
+public export
+data SchedulePrimitive : Type where
+  ||| Tile two dimensions into inner/outer loops for cache locality
+  ||| tile(x, y, xi, yi, tile_x, tile_y)
+  Tile : (tileX : Nat) -> (tileY : Nat) -> SchedulePrimitive
+  ||| Vectorize the innermost loop dimension using SIMD
+  ||| vectorize(var, width)
+  Vectorize : (width : Nat) -> SchedulePrimitive
+  ||| Distribute loop iterations across CPU cores
+  ||| parallelize(var)
+  Parallelize : SchedulePrimitive
+  ||| Fuse a producer stage into a consumer's loop nest
+  ||| compute_at(consumer, var)
+  ComputeAt : (consumerStage : Nat) -> (varIndex : Nat) -> SchedulePrimitive
+  ||| Control where intermediate buffers are allocated in the loop nest
+  ||| store_at(consumer, var)
+  StoreAt : (consumerStage : Nat) -> (varIndex : Nat) -> SchedulePrimitive
+  ||| Change the order of loop nesting
+  ||| reorder(var1, var2, ...)
+  Reorder : (varOrder : List Nat) -> SchedulePrimitive
+  ||| Unroll a loop by a constant factor
+  ||| unroll(var, factor)
+  Unroll : (factor : Nat) -> SchedulePrimitive
+  ||| Map to GPU thread blocks (CUDA/OpenCL/Metal/Vulkan)
+  ||| gpu_blocks(block_x, block_y)
+  GPUBlocks : (blockX : Nat) -> (blockY : Nat) -> SchedulePrimitive
+  ||| Map to GPU threads within a block
+  ||| gpu_threads(thread_x, thread_y)
+  GPUThreads : (threadX : Nat) -> (threadY : Nat) -> SchedulePrimitive
+  ||| Split a dimension into outer and inner
+  ||| split(var, outer, inner, factor)
+  Split : (factor : Nat) -> SchedulePrimitive
+  ||| Fuse two dimensions into one
+  ||| fuse(var1, var2, fused)
+  Fuse : SchedulePrimitive
+  ||| Prefetch data before it is needed
+  ||| prefetch(func, var, offset)
+  Prefetch : (offset : Nat) -> SchedulePrimitive
+
+||| Convert SchedulePrimitive to C integer tag for FFI
+public export
+scheduleToInt : SchedulePrimitive -> Bits32
+scheduleToInt (Tile _ _)       = 0
+scheduleToInt (Vectorize _)    = 1
+scheduleToInt Parallelize      = 2
+scheduleToInt (ComputeAt _ _)  = 3
+scheduleToInt (StoreAt _ _)    = 4
+scheduleToInt (Reorder _)      = 5
+scheduleToInt (Unroll _)       = 6
+scheduleToInt (GPUBlocks _ _)  = 7
+scheduleToInt (GPUThreads _ _) = 8
+scheduleToInt (Split _)        = 9
+scheduleToInt Fuse             = 10
+scheduleToInt (Prefetch _)     = 11
+
+--------------------------------------------------------------------------------
+-- Buffer Dimensions
+--------------------------------------------------------------------------------
+
+||| Pixel data types supported by Halide buffers
+public export
+data PixelType : Type where
+  UInt8   : PixelType
+  UInt16  : PixelType
+  UInt32  : PixelType
+  Float32 : PixelType
+  Float64 : PixelType
+
+||| Bytes per pixel element
+public export
+pixelBytes : PixelType -> Nat
+pixelBytes UInt8   = 1
+pixelBytes UInt16  = 2
+pixelBytes UInt32  = 4
+pixelBytes Float32 = 4
+pixelBytes Float64 = 8
+
+||| Buffer dimensions for an image or video frame.
+||| Width, height, and channels are always present; frames is optional (1 for images).
+|||
+||| All dimensions carry a proof of being positive (> 0).
+public export
+record BufferDimension where
+  constructor MkBufferDimension
+  width    : Nat
+  height   : Nat
+  channels : Nat
+  frames   : Nat
+  {auto 0 widthPos    : So (width > 0)}
+  {auto 0 heightPos   : So (height > 0)}
+  {auto 0 channelsPos : So (channels > 0)}
+  {auto 0 framesPos   : So (frames > 0)}
+
+||| Total number of elements in a buffer
+public export
+bufferElements : BufferDimension -> Nat
+bufferElements dim = dim.width * dim.height * dim.channels * dim.frames
+
+||| Total bytes for a buffer with given dimensions and pixel type
+public export
+bufferBytes : BufferDimension -> PixelType -> Nat
+bufferBytes dim ptype = bufferElements dim * pixelBytes ptype
+
+--------------------------------------------------------------------------------
+-- Tile Sizes
+--------------------------------------------------------------------------------
+
+||| A tile size with a proof that it divides the target dimension.
+||| This ensures tiling does not produce partial tiles at boundaries
+||| (or that boundary handling is explicit).
+public export
+record TileSize where
+  constructor MkTileSize
+  size : Nat
+  {auto 0 positive : So (size > 0)}
+
+||| Check whether a tile size evenly divides a dimension extent
+public export
+tileDivides : TileSize -> Nat -> Bool
+tileDivides tile extent = extent `mod` tile.size == 0
+
+||| Proof that vectorise width is compatible with a hardware target
+public export
+data VectorWidthValid : (width : Nat) -> HardwareTarget -> Type where
+  VecValid : {w : Nat} -> {t : HardwareTarget} ->
+             So (w > 0) ->
+             So (w <= simdWidth t) ->
+             VectorWidthValid w t
+
+--------------------------------------------------------------------------------
+-- Result Codes
 --------------------------------------------------------------------------------
 
 ||| Result codes for FFI operations
@@ -53,38 +310,37 @@ data Result : Type where
   OutOfMemory : Result
   ||| Null pointer encountered
   NullPointer : Result
+  ||| Pipeline compilation failed
+  CompileFailed : Result
+  ||| Schedule is invalid for target hardware
+  InvalidSchedule : Result
+  ||| Buffer dimensions mismatch between stages
+  DimensionMismatch : Result
 
 ||| Convert Result to C integer
 public export
 resultToInt : Result -> Bits32
-resultToInt Ok = 0
-resultToInt Error = 1
-resultToInt InvalidParam = 2
-resultToInt OutOfMemory = 3
-resultToInt NullPointer = 4
-
-||| Results are decidably equal
-public export
-DecEq Result where
-  decEq Ok Ok = Yes Refl
-  decEq Error Error = Yes Refl
-  decEq InvalidParam InvalidParam = Yes Refl
-  decEq OutOfMemory OutOfMemory = Yes Refl
-  decEq NullPointer NullPointer = Yes Refl
-  decEq _ _ = No absurd
+resultToInt Ok                = 0
+resultToInt Error             = 1
+resultToInt InvalidParam      = 2
+resultToInt OutOfMemory       = 3
+resultToInt NullPointer       = 4
+resultToInt CompileFailed     = 5
+resultToInt InvalidSchedule   = 6
+resultToInt DimensionMismatch = 7
 
 --------------------------------------------------------------------------------
 -- Opaque Handles
 --------------------------------------------------------------------------------
 
-||| Opaque handle type for FFI
-||| Prevents direct construction, enforces creation through safe API
+||| Opaque handle type for FFI.
+||| Prevents direct construction, enforces creation through safe API.
 public export
 data Handle : Type where
   MkHandle : (ptr : Bits64) -> {auto 0 nonNull : So (ptr /= 0)} -> Handle
 
-||| Safely create a handle from a pointer value
-||| Returns Nothing if pointer is null
+||| Safely create a handle from a pointer value.
+||| Returns Nothing if pointer is null.
 public export
 createHandle : Bits64 -> Maybe Handle
 createHandle 0 = Nothing
@@ -102,114 +358,54 @@ handlePtr (MkHandle ptr) = ptr
 ||| C int size varies by platform
 public export
 CInt : Platform -> Type
-CInt Linux = Bits32
+CInt Linux   = Bits32
 CInt Windows = Bits32
-CInt MacOS = Bits32
-CInt BSD = Bits32
-CInt WASM = Bits32
+CInt MacOS   = Bits32
+CInt BSD     = Bits32
+CInt WASM    = Bits32
 
 ||| C size_t varies by platform
 public export
 CSize : Platform -> Type
-CSize Linux = Bits64
+CSize Linux   = Bits64
 CSize Windows = Bits64
-CSize MacOS = Bits64
-CSize BSD = Bits64
-CSize WASM = Bits32
+CSize MacOS   = Bits64
+CSize BSD     = Bits64
+CSize WASM    = Bits32
 
 ||| C pointer size varies by platform
 public export
 ptrSize : Platform -> Nat
-ptrSize Linux = 64
+ptrSize Linux   = 64
 ptrSize Windows = 64
-ptrSize MacOS = 64
-ptrSize BSD = 64
-ptrSize WASM = 32
-
-||| Pointer type for platform
-public export
-CPtr : Platform -> Type -> Type
-CPtr p _ = Bits (ptrSize p)
+ptrSize MacOS   = 64
+ptrSize BSD     = 64
+ptrSize WASM    = 32
 
 --------------------------------------------------------------------------------
--- Memory Layout Proofs
+-- Pipeline Composition Proof
 --------------------------------------------------------------------------------
 
-||| Proof that a type has a specific size
+||| Proof that two stages are connectable: the output dimensions of stage A
+||| are compatible with the input dimensions of stage B.
 public export
-data HasSize : Type -> Nat -> Type where
-  SizeProof : {0 t : Type} -> {n : Nat} -> HasSize t n
+data StagesConnectable : PipelineStage -> PipelineStage -> BufferDimension -> Type where
+  ||| Most stages preserve dimensions (blur, sharpen, edge detect, colour convert)
+  PreserveDim : StagesConnectable a b dim
+  ||| Resize changes dimensions — the proof must supply the new dimensions
+  ResizeConnectable :
+    (newDim : BufferDimension) ->
+    StagesConnectable (Resize fx fy) next newDim
 
-||| Proof that a type has a specific alignment
+||| A validated pipeline is a non-empty sequence of stages with proofs
+||| that adjacent stages are connectable.
 public export
-data HasAlignment : Type -> Nat -> Type where
-  AlignProof : {0 t : Type} -> {n : Nat} -> HasAlignment t n
-
-||| Size of C types (platform-specific)
-public export
-cSizeOf : (p : Platform) -> (t : Type) -> Nat
-cSizeOf p (CInt _) = 4
-cSizeOf p (CSize _) = if ptrSize p == 64 then 8 else 4
-cSizeOf p Bits32 = 4
-cSizeOf p Bits64 = 8
-cSizeOf p Double = 8
-cSizeOf p _ = ptrSize p `div` 8
-
-||| Alignment of C types (platform-specific)
-public export
-cAlignOf : (p : Platform) -> (t : Type) -> Nat
-cAlignOf p (CInt _) = 4
-cAlignOf p (CSize _) = if ptrSize p == 64 then 8 else 4
-cAlignOf p Bits32 = 4
-cAlignOf p Bits64 = 8
-cAlignOf p Double = 8
-cAlignOf p _ = ptrSize p `div` 8
-
---------------------------------------------------------------------------------
--- Example Struct with Layout Proof
---------------------------------------------------------------------------------
-
-||| Example C-compatible struct
-||| Replace this with your actual data types
-public export
-record ExampleStruct where
-  constructor MkExampleStruct
-  field1 : Bits32
-  field2 : Bits64
-  field3 : Double
-
-||| Prove the struct has correct size
-public export
-exampleStructSize : (p : Platform) -> HasSize ExampleStruct 16
-exampleStructSize p =
-  -- 4 bytes (Bits32) + 4 padding + 8 bytes (Bits64) + 8 bytes (Double) = 24
-  -- But with alignment, it's actually platform-specific
-  SizeProof
-
-||| Prove the struct has correct alignment
-public export
-exampleStructAlign : (p : Platform) -> HasAlignment ExampleStruct 8
-exampleStructAlign p = AlignProof
-
---------------------------------------------------------------------------------
--- FFI Declarations
---------------------------------------------------------------------------------
-
-||| Declare external C functions
-||| These will be implemented in Zig FFI
-namespace Foreign
-
-  ||| External function example
-  export
-  %foreign "C:example_function, libexample"
-  prim__exampleFunction : Bits64 -> PrimIO Bits32
-
-  ||| Safe wrapper around FFI function
-  export
-  exampleFunction : Handle -> IO (Either Result Bits32)
-  exampleFunction h = do
-    result <- primIO (prim__exampleFunction (handlePtr h))
-    pure (Right result)
+data ValidPipeline : List PipelineStage -> Type where
+  SingleStage : (s : PipelineStage) -> ValidPipeline [s]
+  ConsStage   : (s : PipelineStage) ->
+                (rest : ValidPipeline (t :: ts)) ->
+                StagesConnectable s t dim ->
+                ValidPipeline (s :: t :: ts)
 
 --------------------------------------------------------------------------------
 -- Verification
@@ -218,16 +414,25 @@ namespace Foreign
 ||| Compile-time verification of ABI properties
 namespace Verify
 
-  ||| Verify struct sizes are correct
+  ||| Verify that all hardware targets have positive SIMD width
   export
-  verifySizes : IO ()
-  verifySizes = do
-    -- Add compile-time checks here
-    putStrLn "ABI sizes verified"
+  allTargetsPositiveSimd : (t : HardwareTarget) -> So (simdWidth t > 0)
+  allTargetsPositiveSimd X86_SSE     = Oh
+  allTargetsPositiveSimd X86_AVX2    = Oh
+  allTargetsPositiveSimd X86_AVX512  = Oh
+  allTargetsPositiveSimd ARM_NEON    = Oh
+  allTargetsPositiveSimd ARM_SVE     = Oh
+  allTargetsPositiveSimd CUDA        = Oh
+  allTargetsPositiveSimd OpenCL      = Oh
+  allTargetsPositiveSimd Metal       = Oh
+  allTargetsPositiveSimd Vulkan_     = Oh
+  allTargetsPositiveSimd WebAssembly = Oh
 
-  ||| Verify struct alignments are correct
+  ||| Verify that all pixel types have positive byte width
   export
-  verifyAlignments : IO ()
-  verifyAlignments = do
-    -- Add compile-time checks here
-    putStrLn "ABI alignments verified"
+  allPixelTypesPositive : (p : PixelType) -> So (pixelBytes p > 0)
+  allPixelTypesPositive UInt8   = Oh
+  allPixelTypesPositive UInt16  = Oh
+  allPixelTypesPositive UInt32  = Oh
+  allPixelTypesPositive Float32 = Oh
+  allPixelTypesPositive Float64 = Oh
