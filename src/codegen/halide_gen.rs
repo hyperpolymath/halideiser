@@ -76,9 +76,7 @@ pub fn generate_halide_generator(manifest: &Manifest, pipeline: &ResolvedPipelin
 
     // Clamp input for boundary safety.
     code.push_str("        // Clamp input to handle boundary conditions\n");
-    code.push_str(&format!(
-        "        Func clamped = BoundaryConditions::repeat_edge(input);\n\n"
-    ));
+    code.push_str("        Func clamped = BoundaryConditions::repeat_edge(input);\n\n");
 
     // Generate each stage's algorithm.
     let mut prev_func = "clamped".to_string();
@@ -224,11 +222,17 @@ fn generate_stage_algorithm(
             let ks = params.kernel_size.unwrap_or(3);
             let radius = ks as i32 / 2;
             let kernel_values = if let Some(ref k) = params.kernel {
-                k.iter().map(|v: &f64| format!("{:.6}f", v)).collect::<Vec<_>>().join(", ")
+                k.iter()
+                    .map(|v: &f64| format!("{:.6}f", v))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             } else {
                 // Default: identity-like kernel (all 1/N^2).
                 let val = 1.0 / (ks as f64 * ks as f64);
-                (0..ks * ks).map(|_| format!("{:.6}f", val)).collect::<Vec<_>>().join(", ")
+                (0..ks * ks)
+                    .map(|_| format!("{:.6}f", val))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             };
             format!(
                 "Func {func}(\"{func}\");\n\
@@ -340,18 +344,14 @@ fn generate_output_schedule(manifest: &Manifest, _pipeline: &ResolvedPipeline) -
     match target {
         HardwareTarget::Cuda | HardwareTarget::Opencl => {
             sched.push_str("Var block_x, block_y, thread_x, thread_y;\n");
-            sched.push_str("output.gpu_tile(x, y, block_x, block_y, thread_x, thread_y, 32, 32);\n");
+            sched
+                .push_str("output.gpu_tile(x, y, block_x, block_y, thread_x, thread_y, 32, 32);\n");
         }
         _ => {
             sched.push_str("output\n");
-            sched.push_str(&format!(
-                "    .tile(x, y, xo, yo, xi, yi, tile_x, tile_y)\n"
-            ));
+            sched.push_str("    .tile(x, y, xo, yo, xi, yi, tile_x, tile_y)\n");
             if manifest.target.vectorize {
-                sched.push_str(&format!(
-                    "    .vectorize(xi, {})\n",
-                    vec_width,
-                ));
+                sched.push_str(&format!("    .vectorize(xi, {})\n", vec_width,));
             }
             if manifest.target.parallelize {
                 sched.push_str("    .parallel(yo);\n");
@@ -377,15 +377,11 @@ fn generate_stage_schedule(
     match target {
         HardwareTarget::Cuda | HardwareTarget::Opencl => {
             // For GPU targets, compute each stage inline at the output's GPU tiles.
-            sched.push_str(&format!(
-                "{func}.compute_at(output, block_x);\n"
-            ));
+            sched.push_str(&format!("{func}.compute_at(output, block_x);\n"));
         }
         _ => {
             // For CPU targets, compute at the output's outer tile dimension.
-            sched.push_str(&format!(
-                "{func}.compute_at(output, yo);\n"
-            ));
+            sched.push_str(&format!("{func}.compute_at(output, yo);\n"));
             // Apply vectorization if present in the schedule.
             for prim in schedule_primitives {
                 if let SchedulePrimitive::Vectorize { width } = prim {
@@ -432,9 +428,7 @@ pub fn generate_runner(manifest: &Manifest) -> String {
     code.push_str("// SPDX-License-Identifier: PMPL-1.0-or-later\n\n");
     code.push_str("#include \"HalideBuffer.h\"\n");
     code.push_str("#include \"halide_image_io.h\"\n");
-    code.push_str(&format!(
-        "#include \"{name}_generator.h\"\n\n"
-    ));
+    code.push_str(&format!("#include \"{name}_generator.h\"\n\n"));
     code.push_str("#include <cstdio>\n");
     code.push_str("#include <cstdlib>\n\n");
 

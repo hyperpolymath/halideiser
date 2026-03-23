@@ -64,18 +64,11 @@ impl fmt::Display for HalideOperation {
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum SchedulePrimitive {
     /// Tile the computation in x/y with given tile sizes.
-    Tile {
-        x_size: u32,
-        y_size: u32,
-    },
+    Tile { x_size: u32, y_size: u32 },
     /// Vectorize the innermost loop with the given width (e.g. 8 for AVX-256).
-    Vectorize {
-        width: u32,
-    },
+    Vectorize { width: u32 },
     /// Parallelize the given dimension (typically the outermost y tiles).
-    Parallelize {
-        dimension: String,
-    },
+    Parallelize { dimension: String },
     /// Compute a producer function at a specific consumer dimension.
     ComputeAt {
         producer: String,
@@ -89,9 +82,7 @@ pub enum SchedulePrimitive {
         dimension: String,
     },
     /// Reorder loop dimensions for better cache/SIMD behaviour.
-    Reorder {
-        dimensions: Vec<String>,
-    },
+    Reorder { dimensions: Vec<String> },
 }
 
 impl fmt::Display for SchedulePrimitive {
@@ -168,7 +159,7 @@ impl HardwareTarget {
             HardwareTarget::Arm => 4,   // NEON: 128-bit = 4x float32
             HardwareTarget::Cuda => 32, // warp size
             HardwareTarget::Opencl => 16,
-            HardwareTarget::Wasm => 4,  // WASM SIMD: 128-bit
+            HardwareTarget::Wasm => 4, // WASM SIMD: 128-bit
         }
     }
 }
@@ -272,23 +263,23 @@ pub struct StageParams {
 pub fn validate_stage(stage: &PipelineStage) -> Result<(), String> {
     match &stage.operation {
         HalideOperation::Blur => {
-            if let Some(ks) = stage.params.kernel_size {
-                if ks % 2 == 0 {
-                    return Err(format!(
-                        "Stage '{}': kernel-size must be odd, got {}",
-                        stage.name, ks
-                    ));
-                }
+            if let Some(ks) = stage.params.kernel_size
+                && ks % 2 == 0
+            {
+                return Err(format!(
+                    "Stage '{}': kernel-size must be odd, got {}",
+                    stage.name, ks
+                ));
             }
         }
         HalideOperation::Sharpen => {
-            if let Some(ks) = stage.params.kernel_size {
-                if ks % 2 == 0 {
-                    return Err(format!(
-                        "Stage '{}': kernel-size must be odd, got {}",
-                        stage.name, ks
-                    ));
-                }
+            if let Some(ks) = stage.params.kernel_size
+                && ks % 2 == 0
+            {
+                return Err(format!(
+                    "Stage '{}': kernel-size must be odd, got {}",
+                    stage.name, ks
+                ));
             }
         }
         HalideOperation::Resize => {

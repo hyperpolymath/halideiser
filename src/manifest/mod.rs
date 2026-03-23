@@ -14,8 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::abi::{
-    HalideOperation, HardwareTarget, PixelType, StageParams, PipelineStage,
-    validate_stage,
+    HalideOperation, HardwareTarget, PipelineStage, PixelType, StageParams, validate_stage,
 };
 
 // ---------------------------------------------------------------------------
@@ -136,8 +135,7 @@ fn default_pixel_type() -> PixelType {
 pub fn load_manifest(path: &str) -> Result<Manifest> {
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read manifest: {}", path))?;
-    parse_manifest(&content)
-        .with_context(|| format!("Failed to parse manifest: {}", path))
+    parse_manifest(&content).with_context(|| format!("Failed to parse manifest: {}", path))
 }
 
 /// Parse a manifest from a TOML string (useful for testing without disk I/O).
@@ -176,14 +174,10 @@ pub fn validate(manifest: &Manifest) -> Result<()> {
             anyhow::bail!("Each stage must have a non-empty name");
         }
         if !is_valid_c_identifier(&stage.name) {
-            anyhow::bail!(
-                "Stage name '{}' is not a valid C identifier",
-                stage.name
-            );
+            anyhow::bail!("Stage name '{}' is not a valid C identifier", stage.name);
         }
         let ps = stage.to_pipeline_stage();
-        validate_stage(&ps)
-            .map_err(|e| anyhow::anyhow!("Stage validation failed: {}", e))?;
+        validate_stage(&ps).map_err(|e| anyhow::anyhow!("Stage validation failed: {}", e))?;
     }
 
     // Check for duplicate stage names.
@@ -260,7 +254,10 @@ bit-depth = "uint8"
 
 /// Print human-readable information about a manifest.
 pub fn print_info(manifest: &Manifest) {
-    println!("=== {} v{} ===", manifest.project.name, manifest.project.version);
+    println!(
+        "=== {} v{} ===",
+        manifest.project.name, manifest.project.version
+    );
     if let Some(ref desc) = manifest.project.description {
         println!("  {}", desc);
     }
@@ -270,10 +267,9 @@ pub fn print_info(manifest: &Manifest) {
         println!("  {}. {} — {}", i + 1, stage.name, stage.operation);
     }
     println!();
-    println!("Target: {} (vectorize={}, parallelize={})",
-        manifest.target.arch,
-        manifest.target.vectorize,
-        manifest.target.parallelize,
+    println!(
+        "Target: {} (vectorize={}, parallelize={})",
+        manifest.target.arch, manifest.target.vectorize, manifest.target.parallelize,
     );
     println!(
         "Pipeline: {} -> {} ({})",

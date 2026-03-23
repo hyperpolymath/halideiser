@@ -8,9 +8,9 @@
 //   - halide_gen: generates Halide C++ algorithm and schedule code
 //   - build_gen:  generates CMake build files for Halide compilation
 
-pub mod parser;
-pub mod halide_gen;
 pub mod build_gen;
+pub mod halide_gen;
+pub mod parser;
 
 use anyhow::{Context, Result};
 use std::fs;
@@ -30,8 +30,8 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     fs::create_dir_all(out).context("Failed to create output directory")?;
 
     // Step 1: Parse and validate the pipeline sequence.
-    let resolved_pipeline = parser::resolve_pipeline(manifest)
-        .context("Pipeline validation failed")?;
+    let resolved_pipeline =
+        parser::resolve_pipeline(manifest).context("Pipeline validation failed")?;
 
     // Step 2: Generate the Halide C++ generator source.
     let generator_code = halide_gen::generate_halide_generator(manifest, &resolved_pipeline);

@@ -38,14 +38,8 @@ pub fn generate_cmake(manifest: &Manifest) -> String {
     cmake.push_str("find_package(Halide REQUIRED)\n\n");
 
     // Halide target configuration.
-    cmake.push_str(&format!(
-        "# Target: {}\n",
-        target,
-    ));
-    cmake.push_str(&format!(
-        "set(HALIDE_TARGET \"{}\")\n\n",
-        halide_target,
-    ));
+    cmake.push_str(&format!("# Target: {}\n", target,));
+    cmake.push_str(&format!("set(HALIDE_TARGET \"{}\")\n\n", halide_target,));
 
     // Generator executable.
     cmake.push_str("# Build the Halide generator\n");
@@ -58,24 +52,15 @@ pub fn generate_cmake(manifest: &Manifest) -> String {
 
     // Halide library (runs the generator to produce the AOT-compiled pipeline).
     cmake.push_str("# Run generator to produce AOT library\n");
-    cmake.push_str(&format!(
-        "add_halide_library({name}_halide\n"
-    ));
-    cmake.push_str(&format!(
-        "    FROM {name}_generator\n"
-    ));
-    cmake.push_str(&format!(
-        "    GENERATOR {name}_generator\n"
-    ));
+    cmake.push_str(&format!("add_halide_library({name}_halide\n"));
+    cmake.push_str(&format!("    FROM {name}_generator\n"));
+    cmake.push_str(&format!("    GENERATOR {name}_generator\n"));
     cmake.push_str("    TARGETS ${{HALIDE_TARGET}}\n");
 
     // Add feature flags based on target.
     let features = halide_feature_flags(target, manifest.target.vectorize);
     if !features.is_empty() {
-        cmake.push_str(&format!(
-            "    FEATURES {}\n",
-            features,
-        ));
+        cmake.push_str(&format!("    FEATURES {}\n", features,));
     }
     cmake.push_str(")\n\n");
 
@@ -84,18 +69,12 @@ pub fn generate_cmake(manifest: &Manifest) -> String {
     cmake.push_str(&format!(
         "add_executable({name}_runner {name}_runner.cpp)\n"
     ));
-    cmake.push_str(&format!(
-        "target_link_libraries({name}_runner\n"
-    ));
-    cmake.push_str(&format!(
-        "    PRIVATE {name}_halide Halide::ImageIO)\n\n"
-    ));
+    cmake.push_str(&format!("target_link_libraries({name}_runner\n"));
+    cmake.push_str(&format!("    PRIVATE {name}_halide Halide::ImageIO)\n\n"));
 
     // Install rules.
     cmake.push_str("# Install\n");
-    cmake.push_str(&format!(
-        "install(TARGETS {name}_runner DESTINATION bin)\n"
-    ));
+    cmake.push_str(&format!("install(TARGETS {name}_runner DESTINATION bin)\n"));
 
     cmake
 }

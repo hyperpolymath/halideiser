@@ -7,11 +7,10 @@
 // and produces a `ResolvedPipeline` that the Halide code generator can
 // directly consume.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::abi::{
-    HalideOperation, HardwareTarget, PipelineStage, SchedulePrimitive,
-    validate_stage,
+    HalideOperation, HardwareTarget, PipelineStage, SchedulePrimitive, validate_stage,
 };
 use crate::manifest::Manifest;
 
@@ -66,8 +65,7 @@ pub fn resolve_pipeline(manifest: &Manifest) -> Result<ResolvedPipeline> {
         apply_defaults(&mut pipeline_stage);
 
         // Validate after defaults are applied.
-        validate_stage(&pipeline_stage)
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        validate_stage(&pipeline_stage).map_err(|e| anyhow::anyhow!("{}", e))?;
 
         // Determine if this stage needs a reduction domain.
         let uses_rdom = stage_uses_rdom(&pipeline_stage.operation);
@@ -151,9 +149,7 @@ fn apply_defaults(stage: &mut PipelineStage) {
 fn stage_uses_rdom(op: &HalideOperation) -> bool {
     matches!(
         op,
-        HalideOperation::Blur
-            | HalideOperation::Convolve
-            | HalideOperation::EdgeDetect
+        HalideOperation::Blur | HalideOperation::Convolve | HalideOperation::EdgeDetect
     )
 }
 
@@ -210,7 +206,13 @@ fn auto_schedule(
     if stage_uses_rdom(&stage.operation) {
         // Reorder to put channel dimension innermost for vectorization.
         sched.push(SchedulePrimitive::Reorder {
-            dimensions: vec!["c".into(), "xi".into(), "yi".into(), "xo".into(), "yo".into()],
+            dimensions: vec![
+                "c".into(),
+                "xi".into(),
+                "yi".into(),
+                "xo".into(),
+                "yo".into(),
+            ],
         });
     }
 
@@ -307,8 +309,8 @@ bit-depth = "uint16"
         let m = parse_manifest(toml_str).unwrap();
         let resolved = resolve_pipeline(&m).unwrap();
         assert_eq!(resolved.stages.len(), 3);
-        assert!(resolved.stages[0].uses_rdom);  // blur
-        assert!(resolved.stages[1].uses_rdom);  // edge-detect
+        assert!(resolved.stages[0].uses_rdom); // blur
+        assert!(resolved.stages[1].uses_rdom); // edge-detect
         assert!(!resolved.stages[2].uses_rdom); // threshold
     }
 
@@ -340,7 +342,12 @@ output-format = "jpg"
         let m = parse_manifest(toml_str).unwrap();
         let result = resolve_pipeline(&m);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Consecutive resize"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Consecutive resize")
+        );
     }
 
     #[test]
@@ -357,7 +364,9 @@ output-format = "jpg"
         let sched = auto_schedule(&stage, &HardwareTarget::Cuda, true, true);
         // GPU should NOT have a Parallelize primitive (GPU has its own parallelism).
         assert!(
-            !sched.iter().any(|s| matches!(s, SchedulePrimitive::Parallelize { .. })),
+            !sched
+                .iter()
+                .any(|s| matches!(s, SchedulePrimitive::Parallelize { .. })),
             "GPU schedule should not include explicit Parallelize"
         );
     }
