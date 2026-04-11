@@ -1,57 +1,27 @@
-;; SPDX-License-Identifier: PMPL-1.0-or-later
-;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-;; META.a2ml — Meta-level information for halideiser
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# META.a2ml — Halideiser meta-level information
+[metadata]
+version = "0.1.0"
+last-updated = "2026-03-21"
 
-(meta
-  (version "0.1.0")
-  (last-updated "2026-03-21")
+[project-info]
+license = "PMPL-1.0-or-later"
+author = "Jonathan D.A. Jewell (hyperpolymath)"
 
-  (architecture-decisions
-    (adr "001-iser-pattern"
-      (status "accepted")
-      (context "Need to make Halide's algorithm/schedule separation accessible without Halide expertise")
-      (decision "Use manifest-driven code generation: user describes pipeline stages in TOML, halideiser generates Halide code")
-      (consequences "Users write zero Halide code; all complexity in the -iser; 10-100x speedups accessible to non-experts"))
+[architecture-decisions]
+decisions = [
+  # No ADRs recorded
+]
 
-    (adr "002-abi-ffi-standard"
-      (status "accepted")
-      (context "Need verified interop between Rust CLI, Halide C++ runtime, and user applications")
-      (decision "Idris2 ABI for formal proofs of pipeline correctness and buffer safety; Zig FFI for C-ABI bridge")
-      (consequences "Compile-time guarantees that buffer dimensions match between stages; zero runtime overhead from proofs"))
+[development-practices]
+versioning = "SemVer"
+documentation = "AsciiDoc"
+build-tool = "just"
 
-    (adr "003-halide-separation"
-      (status "accepted")
-      (context "Halide's core insight: algorithm and schedule should be separate")
-      (decision "Halideiser preserves this separation — pipeline stages define the algorithm, scheduling primitives define execution strategy")
-      (consequences "Same pipeline can be compiled for different targets (CPU/GPU/WASM) by changing only the schedule"))
-
-    (adr "004-auto-tuning"
-      (status "accepted")
-      (context "Optimal schedules depend on specific hardware — cache sizes, SIMD width, GPU warp size")
-      (decision "Implement auto-tuning: search over schedule space (tile sizes, vectorise widths, parallelism) via benchmarking")
-      (consequences "Near-optimal performance without manual tuning; tuning results cached per (pipeline, hardware) pair"))
-
-    (adr "005-rsr-template"
-      (status "accepted")
-      (context "Need consistent project structure across 29+ -iser repos")
-      (decision "All repos cloned from rsr-template-repo with full CI/CD and governance")
-      (consequences "17 workflows, SECURITY.md, CONTRIBUTING, bot directives from day one")))
-
-  (development-practices
-    (language "Rust" (purpose "CLI orchestration — parse, validate, generate, build, run"))
-    (language "Idris2" (purpose "ABI formal proofs — pipeline correctness, buffer safety, schedule validity"))
-    (language "Zig" (purpose "FFI C-ABI bridge — compiled pipeline execution from any language"))
-    (language "C++" (purpose "Generated Halide code — Func/Var definitions and AOT compilation"))
-    (build-tool "cargo" (purpose "Rust CLI"))
-    (build-tool "zig build" (purpose "FFI shared/static library"))
-    (ci "GitHub Actions (17 workflows)"))
-
-  (design-rationale
-    (principle "Manifest-driven"
-      (explanation "Pipeline described in halideiser.toml; all generation is deterministic and reproducible"))
-    (principle "Algorithm/Schedule separation"
-      (explanation "Halide's core insight preserved — same algorithm runs on CPU, GPU, or WASM by changing schedule"))
-    (principle "Formally verified buffers"
-      (explanation "Idris2 dependent types prove buffer dimensions match between stages and bounds are respected"))
-    (principle "Hardware-adaptive"
-      (explanation "Auto-tuning searches the schedule space for optimal performance on specific hardware"))))
+[maintenance-axes]
+scoping-first = true
+axis-1 = "must > intend > like"
+axis-2 = "corrective > adaptive > perfective"
+axis-3 = "systems > compliance > effects"
