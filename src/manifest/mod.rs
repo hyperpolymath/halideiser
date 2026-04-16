@@ -303,7 +303,7 @@ output-format = "png"
 
     #[test]
     fn test_parse_minimal_manifest() {
-        let m = parse_manifest(MINIMAL_MANIFEST).unwrap();
+        let m = parse_manifest(MINIMAL_MANIFEST).expect("TODO: handle error");
         assert_eq!(m.project.name, "test_pipeline");
         assert_eq!(m.stages.len(), 1);
         assert_eq!(m.stages[0].operation, HalideOperation::Blur);
@@ -328,7 +328,7 @@ arch = "x86"
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         assert!(validate(&m).is_err());
     }
 

@@ -497,8 +497,8 @@ arch = "x86"
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
-        let resolved = resolve_pipeline(&m).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
+        let resolved = resolve_pipeline(&m).expect("TODO: handle error");
         let code = generate_halide_generator(&m, &resolved);
         assert!(code.contains("class blur_testGenerator"));
         assert!(code.contains("RDom r("));
@@ -523,7 +523,7 @@ arch = "arm"
 input-format = "jpg"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let runner = generate_runner(&m);
         assert!(runner.contains("runner_test_generator.h"));
         assert!(runner.contains("input.jpg"));
@@ -548,8 +548,8 @@ arch = "x86"
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
-        let resolved = resolve_pipeline(&m).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
+        let resolved = resolve_pipeline(&m).expect("TODO: handle error");
         let code = generate_halide_generator(&m, &resolved);
         assert!(code.contains("Sobel"));
         assert!(code.contains("gx"));
@@ -576,8 +576,8 @@ input-format = "raw"
 output-format = "raw"
 bit-depth = "float32"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
-        let resolved = resolve_pipeline(&m).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
+        let resolved = resolve_pipeline(&m).expect("TODO: handle error");
         let code = generate_halide_generator(&m, &resolved);
         assert!(code.contains("gpu_tile"));
         assert!(code.contains("block_x"));

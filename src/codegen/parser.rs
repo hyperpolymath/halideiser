@@ -111,7 +111,7 @@ fn apply_defaults(stage: &mut PipelineStage) {
             }
             if stage.params.sigma.is_none() {
                 // Default sigma based on kernel size: sigma = (kernel_size - 1) / 6.0
-                let ks = stage.params.kernel_size.unwrap() as f64;
+                let ks = stage.params.kernel_size.expect("TODO: handle error") as f64;
                 stage.params.sigma = Some((ks - 1.0) / 6.0);
             }
         }
@@ -266,8 +266,8 @@ arch = "x86"
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
-        let resolved = resolve_pipeline(&m).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
+        let resolved = resolve_pipeline(&m).expect("TODO: handle error");
         assert_eq!(resolved.stages.len(), 1);
         assert!(resolved.stages[0].uses_rdom);
         // Defaults should be applied: kernel_size=3, sigma=(3-1)/6.
@@ -306,8 +306,8 @@ input-format = "raw"
 output-format = "png"
 bit-depth = "uint16"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
-        let resolved = resolve_pipeline(&m).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
+        let resolved = resolve_pipeline(&m).expect("TODO: handle error");
         assert_eq!(resolved.stages.len(), 3);
         assert!(resolved.stages[0].uses_rdom); // blur
         assert!(resolved.stages[1].uses_rdom); // edge-detect
@@ -339,7 +339,7 @@ arch = "wasm"
 input-format = "jpg"
 output-format = "jpg"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let result = resolve_pipeline(&m);
         assert!(result.is_err());
         assert!(

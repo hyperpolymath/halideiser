@@ -188,7 +188,7 @@ parallelize = true
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let cmake = generate_cmake(&m);
         assert!(cmake.contains("cmake_minimum_required"));
         assert!(cmake.contains("find_package(Halide REQUIRED)"));
@@ -214,7 +214,7 @@ arch = "cuda"
 input-format = "raw"
 output-format = "raw"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let cmake = generate_cmake(&m);
         assert!(cmake.contains("host-cuda"));
         assert!(cmake.contains("cuda_capability_61"));
@@ -239,7 +239,7 @@ vectorize = true
 input-format = "png"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let cmake = generate_cmake(&m);
         assert!(cmake.contains("wasm-32-wasmrt"));
         assert!(cmake.contains("wasm_simd128"));
@@ -262,7 +262,7 @@ arch = "arm"
 input-format = "raw"
 output-format = "png"
 "#;
-        let m = parse_manifest(toml_str).unwrap();
+        let m = parse_manifest(toml_str).expect("TODO: handle error");
         let script = generate_build_script(&m);
         assert!(script.contains("#!/usr/bin/env bash"));
         assert!(script.contains("script_test_gen"));
