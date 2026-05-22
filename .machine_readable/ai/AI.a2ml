@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # AI Assistant Instructions for halideiser
 
 ## Repository Focus
@@ -34,4 +34,4 @@ Key domain concepts:
 - Halide algorithm and schedule are always separate layers.
 - Idris2 ABI types must match Zig FFI enums exactly (tag values).
 - Buffer dimensions must be positive (enforced by dependent types in Idris2).
-- PMPL-1.0-or-later license on all original code.
+- MPL-2.0 license on all original code.

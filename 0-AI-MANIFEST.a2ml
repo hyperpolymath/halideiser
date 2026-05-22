@@ -47,7 +47,7 @@ SOFTWARE-DEVELOPMENT-APPROACH.a2ml.
 
 1. **No state file duplication** - Root must NOT contain STATE.a2ml, META.a2ml, etc.
 2. **Single source of truth** - `.machine_readable/` is authoritative
-3. **License consistency** - All code PMPL-1.0-or-later unless platform requires MPL-2.0
+3. **License consistency** - All code MPL-2.0 unless platform requires MPL-2.0
 4. **Author attribution** - Always "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 5. **Container images** - Chainguard base (`cgr.dev/chainguard/wolfi-base:latest`)
 6. **Container runtime** - Podman, never Docker. Files are `Containerfile`, never `Dockerfile`
@@ -65,7 +65,7 @@ halideiser/
 ├── Cargo.toml                  # Rust CLI package
 ├── Justfile                    # Task runner
 ├── Containerfile               # OCI build (Chainguard base)
-├── LICENSE                     # PMPL-1.0-or-later
+├── LICENSE                     # MPL-2.0
 ├── src/
 │   ├── main.rs                 # CLI entry (clap subcommands)
 │   ├── lib.rs                  # Library API
