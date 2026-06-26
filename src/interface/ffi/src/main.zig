@@ -424,10 +424,8 @@ export fn halideiser_execute_pipeline(
     //   1. Wrap input_ptr/output_ptr as halide_buffer_t
     //   2. Call the compiled pipeline function
     //   3. Return the result code
-    _ = input_ptr;
-    _ = output_ptr;
-    _ = input_len;
-    _ = output_len;
+    // NB: input_ptr/output_ptr/input_len/output_len are already validated above,
+    // so they must not be discarded (Zig 0.14 rejects pointless discards).
 
     clearError();
     return .ok;
