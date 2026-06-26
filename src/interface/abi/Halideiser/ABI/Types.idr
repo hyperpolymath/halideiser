@@ -22,6 +22,7 @@ import Data.Bits
 import Data.So
 import Data.Vect
 import Data.Nat
+import Decidable.Equality
 
 %default total
 
@@ -33,13 +34,12 @@ import Data.Nat
 public export
 data Platform = Linux | Windows | MacOS | BSD | WASM
 
-||| Compile-time platform detection
-||| Set during compilation based on target
+||| The platform this build targets. Defaults to Linux; the Rust/Zig build
+||| layer overrides this via the codegen target selection. (Previously a
+||| `%runElab` stub that required ElabReflection and did not compile.)
 public export
 thisPlatform : Platform
-thisPlatform =
-  %runElab do
-    pure Linux  -- Default, override with compiler flags
+thisPlatform = Linux
 
 --------------------------------------------------------------------------------
 -- Hardware Targets
@@ -329,6 +329,76 @@ resultToInt CompileFailed     = 5
 resultToInt InvalidSchedule   = 6
 resultToInt DimensionMismatch = 7
 
+||| Results are decidably equal. The off-diagonal cases discharge the
+||| disequality explicitly; a `decEq _ _ = No absurd` catch-all does not
+||| compile (no `Uninhabited (x = y)` instance exists for these).
+public export
+DecEq Result where
+  decEq Ok Ok = Yes Refl
+  decEq Error Error = Yes Refl
+  decEq InvalidParam InvalidParam = Yes Refl
+  decEq OutOfMemory OutOfMemory = Yes Refl
+  decEq NullPointer NullPointer = Yes Refl
+  decEq CompileFailed CompileFailed = Yes Refl
+  decEq InvalidSchedule InvalidSchedule = Yes Refl
+  decEq DimensionMismatch DimensionMismatch = Yes Refl
+  decEq Ok Error = No (\case Refl impossible)
+  decEq Ok InvalidParam = No (\case Refl impossible)
+  decEq Ok OutOfMemory = No (\case Refl impossible)
+  decEq Ok NullPointer = No (\case Refl impossible)
+  decEq Ok CompileFailed = No (\case Refl impossible)
+  decEq Ok InvalidSchedule = No (\case Refl impossible)
+  decEq Ok DimensionMismatch = No (\case Refl impossible)
+  decEq Error Ok = No (\case Refl impossible)
+  decEq Error InvalidParam = No (\case Refl impossible)
+  decEq Error OutOfMemory = No (\case Refl impossible)
+  decEq Error NullPointer = No (\case Refl impossible)
+  decEq Error CompileFailed = No (\case Refl impossible)
+  decEq Error InvalidSchedule = No (\case Refl impossible)
+  decEq Error DimensionMismatch = No (\case Refl impossible)
+  decEq InvalidParam Ok = No (\case Refl impossible)
+  decEq InvalidParam Error = No (\case Refl impossible)
+  decEq InvalidParam OutOfMemory = No (\case Refl impossible)
+  decEq InvalidParam NullPointer = No (\case Refl impossible)
+  decEq InvalidParam CompileFailed = No (\case Refl impossible)
+  decEq InvalidParam InvalidSchedule = No (\case Refl impossible)
+  decEq InvalidParam DimensionMismatch = No (\case Refl impossible)
+  decEq OutOfMemory Ok = No (\case Refl impossible)
+  decEq OutOfMemory Error = No (\case Refl impossible)
+  decEq OutOfMemory InvalidParam = No (\case Refl impossible)
+  decEq OutOfMemory NullPointer = No (\case Refl impossible)
+  decEq OutOfMemory CompileFailed = No (\case Refl impossible)
+  decEq OutOfMemory InvalidSchedule = No (\case Refl impossible)
+  decEq OutOfMemory DimensionMismatch = No (\case Refl impossible)
+  decEq NullPointer Ok = No (\case Refl impossible)
+  decEq NullPointer Error = No (\case Refl impossible)
+  decEq NullPointer InvalidParam = No (\case Refl impossible)
+  decEq NullPointer OutOfMemory = No (\case Refl impossible)
+  decEq NullPointer CompileFailed = No (\case Refl impossible)
+  decEq NullPointer InvalidSchedule = No (\case Refl impossible)
+  decEq NullPointer DimensionMismatch = No (\case Refl impossible)
+  decEq CompileFailed Ok = No (\case Refl impossible)
+  decEq CompileFailed Error = No (\case Refl impossible)
+  decEq CompileFailed InvalidParam = No (\case Refl impossible)
+  decEq CompileFailed OutOfMemory = No (\case Refl impossible)
+  decEq CompileFailed NullPointer = No (\case Refl impossible)
+  decEq CompileFailed InvalidSchedule = No (\case Refl impossible)
+  decEq CompileFailed DimensionMismatch = No (\case Refl impossible)
+  decEq InvalidSchedule Ok = No (\case Refl impossible)
+  decEq InvalidSchedule Error = No (\case Refl impossible)
+  decEq InvalidSchedule InvalidParam = No (\case Refl impossible)
+  decEq InvalidSchedule OutOfMemory = No (\case Refl impossible)
+  decEq InvalidSchedule NullPointer = No (\case Refl impossible)
+  decEq InvalidSchedule CompileFailed = No (\case Refl impossible)
+  decEq InvalidSchedule DimensionMismatch = No (\case Refl impossible)
+  decEq DimensionMismatch Ok = No (\case Refl impossible)
+  decEq DimensionMismatch Error = No (\case Refl impossible)
+  decEq DimensionMismatch InvalidParam = No (\case Refl impossible)
+  decEq DimensionMismatch OutOfMemory = No (\case Refl impossible)
+  decEq DimensionMismatch NullPointer = No (\case Refl impossible)
+  decEq DimensionMismatch CompileFailed = No (\case Refl impossible)
+  decEq DimensionMismatch InvalidSchedule = No (\case Refl impossible)
+
 --------------------------------------------------------------------------------
 -- Opaque Handles
 --------------------------------------------------------------------------------
@@ -339,12 +409,15 @@ public export
 data Handle : Type where
   MkHandle : (ptr : Bits64) -> {auto 0 nonNull : So (ptr /= 0)} -> Handle
 
-||| Safely create a handle from a pointer value.
-||| Returns Nothing if pointer is null.
+||| Safely create a handle from a pointer value. Uses `choose` to obtain a
+||| real `So (ptr /= 0)` witness for the non-null branch. (Previously
+||| `Just (MkHandle ptr)` left the `auto` proof unsolved and did not compile.)
 public export
 createHandle : Bits64 -> Maybe Handle
-createHandle 0 = Nothing
-createHandle ptr = Just (MkHandle ptr)
+createHandle ptr =
+  case choose (ptr /= 0) of
+    Left ok => Just (MkHandle ptr {nonNull = ok})
+    Right _ => Nothing
 
 ||| Extract pointer value from handle
 public export
