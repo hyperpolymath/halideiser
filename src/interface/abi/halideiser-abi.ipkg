@@ -10,3 +10,4 @@ modules = Halideiser.ABI.Types
         , Halideiser.ABI.Foreign
         , Halideiser.ABI.Proofs
         , Halideiser.ABI.Semantics
+        , Halideiser.ABI.Invariants
