@@ -11,3 +11,4 @@ modules = Halideiser.ABI.Types
         , Halideiser.ABI.Proofs
         , Halideiser.ABI.Semantics
         , Halideiser.ABI.Invariants
+        , Halideiser.ABI.FfiSeam
