@@ -12,3 +12,4 @@ modules = Halideiser.ABI.Types
         , Halideiser.ABI.Semantics
         , Halideiser.ABI.Invariants
         , Halideiser.ABI.FfiSeam
+        , Halideiser.ABI.Capstone
