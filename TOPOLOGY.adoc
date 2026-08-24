@@ -1,12 +1,10 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-# TOPOLOGY — halideiser
+== TOPOLOGY — halideiser
 
 Module dependency graph for the halideiser codebase.
 
-## High-Level Flow
+=== High-Level Flow
 
-```
+....
 halideiser.toml  ──►  Pipeline Parser  ──►  Idris2 ABI Proofs
                        (src/manifest/)       (src/interface/abi/)
                              │                      │
@@ -21,34 +19,59 @@ halideiser.toml  ──►  Pipeline Parser  ──►  Idris2 ABI Proofs
                              ▼
                        Zig FFI Bridge
                       (src/interface/ffi/)
-```
+....
 
-## Directory Map
+=== Directory Map
 
-| Directory | Language | Purpose |
-|-----------|----------|---------|
-| `src/main.rs` | Rust | CLI entry point (clap subcommands) |
-| `src/lib.rs` | Rust | Library API surface |
-| `src/manifest/` | Rust | Parse and validate `halideiser.toml` |
-| `src/codegen/` | Rust | Emit Halide algorithm + schedule code |
-| `src/abi/` | Rust | Runtime ABI types mirroring Idris2 proofs |
-| `src/interface/abi/Types.idr` | Idris2 | Pipeline stage types, scheduling primitives, hardware targets |
-| `src/interface/abi/Layout.idr` | Idris2 | Halide `buffer_t` memory layout proofs |
-| `src/interface/abi/Foreign.idr` | Idris2 | FFI declarations for pipeline compilation and execution |
-| `src/interface/ffi/src/main.zig` | Zig | C-ABI FFI implementation |
-| `src/interface/ffi/build.zig` | Zig | Build shared/static library |
-| `src/interface/ffi/test/` | Zig | Integration tests verifying FFI matches ABI |
-| `src/interface/generated/abi/` | C | Auto-generated headers from Idris2 ABI |
-| `tests/` | Rust | End-to-end pipeline tests |
-| `examples/` | TOML/Rust | Example pipeline manifests |
-| `verification/` | — | Formal verification artifacts |
-| `container/` | — | Stapeln container definitions |
-| `docs/` | AsciiDoc | Architecture, theory, attribution |
-| `.machine_readable/` | A2ML/TOML | State, ecosystem, policies, bot directives |
+[width="100%",cols="37%,33%,30%",options="header",]
+|===
+|Directory |Language |Purpose
+|`+src/main.rs+` |Rust |CLI entry point (clap subcommands)
 
-## Rust Module Graph
+|`+src/lib.rs+` |Rust |Library API surface
 
-```
+|`+src/manifest/+` |Rust |Parse and validate `+halideiser.toml+`
+
+|`+src/codegen/+` |Rust |Emit Halide algorithm + schedule code
+
+|`+src/abi/+` |Rust |Runtime ABI types mirroring Idris2 proofs
+
+|`+src/interface/abi/Types.idr+` |Idris2 |Pipeline stage types,
+scheduling primitives, hardware targets
+
+|`+src/interface/abi/Layout.idr+` |Idris2 |Halide `+buffer_t+` memory
+layout proofs
+
+|`+src/interface/abi/Foreign.idr+` |Idris2 |FFI declarations for
+pipeline compilation and execution
+
+|`+src/interface/ffi/src/main.zig+` |Zig |C-ABI FFI implementation
+
+|`+src/interface/ffi/build.zig+` |Zig |Build shared/static library
+
+|`+src/interface/ffi/test/+` |Zig |Integration tests verifying FFI
+matches ABI
+
+|`+src/interface/generated/abi/+` |C |Auto-generated headers from Idris2
+ABI
+
+|`+tests/+` |Rust |End-to-end pipeline tests
+
+|`+examples/+` |TOML/Rust |Example pipeline manifests
+
+|`+verification/+` |— |Formal verification artifacts
+
+|`+container/+` |— |Stapeln container definitions
+
+|`+docs/+` |AsciiDoc |Architecture, theory, attribution
+
+|`+.machine_readable/+` |A2ML/TOML |State, ecosystem, policies, bot
+directives
+|===
+
+=== Rust Module Graph
+
+....
 main.rs
   ├── manifest::load_manifest()
   ├── manifest::validate()
@@ -60,11 +83,11 @@ lib.rs
   ├── pub mod abi        (Rust-side ABI types)
   ├── pub mod codegen    (Halide code generation)
   └── pub mod manifest   (TOML parser + validator)
-```
+....
 
-## Idris2 ABI Module Graph
+=== Idris2 ABI Module Graph
 
-```
+....
 Halideiser.ABI.Types
   ├── PipelineStage      (blur, sharpen, resize, convolve, ...)
   ├── SchedulePrimitive  (tile, vectorize, parallelize, compute_at, ...)
@@ -85,11 +108,11 @@ Halideiser.ABI.Foreign
   ├── halideiser_execute_pipeline  (run compiled pipeline on buffer)
   ├── halideiser_autotune          (search schedule space)
   └── halideiser_init / halideiser_free (lifecycle)
-```
+....
 
-## Zig FFI Module Graph
+=== Zig FFI Module Graph
 
-```
+....
 src/main.zig
   ├── halideiser_init()           → allocate pipeline context
   ├── halideiser_free()           → release resources
@@ -101,11 +124,11 @@ src/main.zig
 
 test/integration_test.zig
   └── verifies all exported functions match ABI contract
-```
+....
 
-## Data Flow
+=== Data Flow
 
-```
+....
 User: halideiser.toml
   │
   ├─ [workload]
@@ -125,4 +148,4 @@ User: halideiser.toml
   │
   └─ [target]
        hardware = "x86_avx2"
-```
+....
