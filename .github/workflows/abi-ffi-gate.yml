@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # abi-ffi-gate.yml — enforce that the Zig FFI conforms to the Idris2 ABI.
 #
 # The Idris2 ABI (src/interface/abi) is the source of truth. This gate fails if
@@ -20,7 +21,7 @@ jobs:
     name: ABI ↔ FFI structural conformance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Run ABI-FFI gate
         run: python3 scripts/abi-ffi-gate.py
 
@@ -28,7 +29,7 @@ jobs:
     name: Zig FFI builds + tests (Zig 0.14.0)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
       - name: Install Zig 0.14.0
         run: |
           curl -fsSL https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -o /tmp/zig.tar.xz
