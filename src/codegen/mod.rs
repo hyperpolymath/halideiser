@@ -67,12 +67,28 @@ pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
     );
     let source_dir = Path::new("generated/halideiser");
     let build_dir = source_dir.join("build");
+    // Give single- and multi-configuration generators the same runtime layout.
+    // The per-configuration variable prevents CMake appending another Release/
+    // or Debug/ directory when using Ninja Multi-Config or Visual Studio.
+    let runtime_dir = std::env::current_dir()?
+        .join(&build_dir)
+        .join("bin")
+        .join(build_type);
     let configure = std::process::Command::new("cmake")
         .arg("-S")
         .arg(source_dir)
         .arg("-B")
         .arg(&build_dir)
         .arg(format!("-DCMAKE_BUILD_TYPE={build_type}"))
+        .arg(format!(
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY={}",
+            runtime_dir.display()
+        ))
+        .arg(format!(
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}",
+            build_type.to_uppercase(),
+            runtime_dir.display()
+        ))
         .status()
         .context("Failed to start CMake configuration")?;
     anyhow::ensure!(
@@ -92,6 +108,11 @@ pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
 
 /// Run the generated pipeline binary.
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
+    run_configuration(manifest, false, args)
+}
+
+/// Run the selected configuration, matching the build command's mode.
+pub fn run_configuration(manifest: &Manifest, release: bool, args: &[String]) -> Result<()> {
     crate::manifest::validate(manifest)?;
     println!(
         "Running {} pipeline ({} stages)",
@@ -101,11 +122,14 @@ pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
     if !args.is_empty() {
         println!("  Extra args: {}", args.join(" "));
     }
-    let binary = Path::new("generated/halideiser/build").join(format!(
-        "{}_runner{}",
-        manifest.project.name,
-        std::env::consts::EXE_SUFFIX
-    ));
+    let build_type = if release { "Release" } else { "Debug" };
+    let binary = Path::new("generated/halideiser/build/bin")
+        .join(build_type)
+        .join(format!(
+            "{}_runner{}",
+            manifest.project.name,
+            std::env::consts::EXE_SUFFIX
+        ));
     let status = std::process::Command::new(&binary)
         .args(args)
         .status()

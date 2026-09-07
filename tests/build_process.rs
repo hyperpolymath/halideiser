@@ -36,11 +36,67 @@ fn build_and_run_execute_and_propagate_exit_status() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        invoke(dir.path(), &["run", "--", "two words"])
+        invoke(dir.path(), &["run", "--release", "--", "two words"])
             .status
             .success()
     );
-    assert!(!invoke(dir.path(), &["run"]).status.success());
+    assert!(!invoke(dir.path(), &["run", "--release"]).status.success());
+    // A release build must not silently satisfy a request for debug mode.
+    assert!(
+        !invoke(dir.path(), &["run", "--", "two words"])
+            .status
+            .success()
+    );
+}
+
+#[test]
+fn multi_configuration_generator_runs_the_selected_mode() {
+    let dir = fixture();
+    let source = dir.path().join("generated/halideiser");
+    fs::write(source.join("CMakeLists.txt"),
+        "cmake_minimum_required(VERSION 3.22)\nproject(probe C)\nadd_executable(probe_runner probe.c)\n").unwrap();
+    fs::write(source.join("probe.c"),
+        "#include <stdio.h>\nint main(void) {\n#ifdef NDEBUG\nputs(\"release\");\n#else\nputs(\"debug\");\n#endif\nreturn 0; }\n").unwrap();
+    for (mode, expected) in [("Release", "release"), ("Debug", "debug")] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_halideiser"));
+        command
+            .current_dir(dir.path())
+            .env("CMAKE_GENERATOR", "Ninja Multi-Config")
+            .arg("build");
+        if mode == "Release" {
+            command.arg("--release");
+        }
+        let output = command.output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let args = if mode == "Release" {
+            vec!["run", "--release"]
+        } else {
+            vec!["run"]
+        };
+        let output = invoke(dir.path(), &args);
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .any(|line| line == expected)
+        );
+    }
+    // The second build must preserve the independently selected first artifact.
+    let output = invoke(dir.path(), &["run", "--release"]);
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .any(|line| line == "release")
+    );
 }
 
 #[test]
