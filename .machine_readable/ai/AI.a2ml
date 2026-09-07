@@ -24,8 +24,8 @@ Key domain concepts:
 
 ## Workflow
 
-1. Inspect `.machine_readable/6a2/STATE.a2ml` for blockers and next actions.
-2. Respect constraints in `.machine_readable/6a2/AGENTIC.a2ml`.
+1. Inspect `.machine_readable/descriptiles/STATE.a2ml` for blockers and next actions.
+2. Respect constraints in `.machine_readable/descriptiles/AGENTIC.a2ml`.
 3. After finishing edits, update STATE.a2ml with outcomes and commit.
 
 ## Key Rules

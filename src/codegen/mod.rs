@@ -59,20 +59,40 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
 
 /// Build generated artifacts by invoking CMake + make.
 pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
+    crate::manifest::validate(manifest)?;
     let build_type = if release { "Release" } else { "Debug" };
     println!(
         "Building {} ({} mode) — target: {}",
         manifest.project.name, build_type, manifest.target.arch
     );
-    println!(
-        "  Run: cd generated/halideiser && cmake -B build -DCMAKE_BUILD_TYPE={} && cmake --build build",
-        build_type
+    let source_dir = Path::new("generated/halideiser");
+    let build_dir = source_dir.join("build");
+    let configure = std::process::Command::new("cmake")
+        .arg("-S")
+        .arg(source_dir)
+        .arg("-B")
+        .arg(&build_dir)
+        .arg(format!("-DCMAKE_BUILD_TYPE={build_type}"))
+        .status()
+        .context("Failed to start CMake configuration")?;
+    anyhow::ensure!(
+        configure.success(),
+        "CMake configuration failed: {configure}"
     );
+    let compile = std::process::Command::new("cmake")
+        .arg("--build")
+        .arg(&build_dir)
+        .arg("--config")
+        .arg(build_type)
+        .status()
+        .context("Failed to start CMake build")?;
+    anyhow::ensure!(compile.success(), "CMake build failed: {compile}");
     Ok(())
 }
 
 /// Run the generated pipeline binary.
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
+    crate::manifest::validate(manifest)?;
     println!(
         "Running {} pipeline ({} stages)",
         manifest.project.name,
@@ -81,9 +101,20 @@ pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
     if !args.is_empty() {
         println!("  Extra args: {}", args.join(" "));
     }
-    println!(
-        "  Run: ./generated/halideiser/build/{}_runner <input> <output>",
-        manifest.project.name
-    );
+    let binary = Path::new("generated/halideiser/build").join(format!(
+        "{}_runner{}",
+        manifest.project.name,
+        std::env::consts::EXE_SUFFIX
+    ));
+    let status = std::process::Command::new(&binary)
+        .args(args)
+        .status()
+        .with_context(|| {
+            format!(
+                "Failed to execute {}; build the pipeline first",
+                binary.display()
+            )
+        })?;
+    anyhow::ensure!(status.success(), "Pipeline execution failed: {status}");
     Ok(())
 }
