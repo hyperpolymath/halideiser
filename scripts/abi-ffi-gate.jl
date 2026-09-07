@@ -15,7 +15,7 @@
 # Usage: julia scripts/abi-ffi-gate.jl [repo_root]   (defaults to cwd)
 #
 # Julia port of the former scripts/abi-ffi-gate.py (Python is banned estate-wide,
-# RSR-H4); behaviour is identical.
+# RSR-H4); required inputs now fail closed.
 
 "camelCase / PascalCase → snake_case (insert `_` before each non-initial capital)."
 camel_to_snake(s) = lowercase(replace(s, r"(?<!^)(?=[A-Z])" => "_"))
@@ -64,8 +64,8 @@ function main(root::AbstractString)::Int
 
     idr_files = idr_sources(abi_dir)
     if isempty(idr_files)
-        println("ABI-FFI GATE: SKIP ($name) — no Idris2 ABI .idr files under $abi_dir")
-        return 0
+        println("ABI-FFI GATE: FAIL ($name) — no Idris2 ABI .idr files under $abi_dir")
+        return 1
     end
     if !isfile(zig_path)
         println("ABI-FFI GATE: FAIL ($name) — no Zig FFI at $zig_path")
@@ -92,7 +92,9 @@ function main(root::AbstractString)::Int
         idr_rc[canon_rc(camel_to_snake(m.captures[1]))] = parse(Int, m.captures[2])
     end
     zig_rc = find_result_enum(zig)
-    if !isempty(idr_rc) && isempty(zig_rc)
+    if isempty(idr_rc)
+        push!(errs, "no Idris resultToInt mapping found to compare result codes")
+    elseif isempty(zig_rc)
         push!(errs, "no Zig `enum(c_int)` Result block (with `ok = 0`) found to compare result codes")
     elseif !isempty(idr_rc) && !isempty(zig_rc) && idr_rc != zig_rc
         push!(errs, "Result-code map differs (name or value):\n" *

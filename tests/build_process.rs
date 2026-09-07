@@ -51,6 +51,27 @@ fn build_and_run_execute_and_propagate_exit_status() {
 
 #[test]
 fn multi_configuration_generator_runs_the_selected_mode() {
+    let ninja = Command::new("ninja")
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success());
+    let generator = Command::new("cmake")
+        .arg("--help")
+        .output()
+        .is_ok_and(|output| {
+            output.status.success()
+                && String::from_utf8_lossy(&output.stdout).contains("Ninja Multi-Config")
+        });
+    if !ninja || !generator {
+        // Local developers may have only a single-configuration generator.
+        // CI must exercise this regression, never silently report a skipped pass.
+        assert!(
+            std::env::var_os("CI").is_none(),
+            "CI requires Ninja and CMake with Ninja Multi-Config support"
+        );
+        eprintln!("SKIP: install Ninja and a CMake supporting Ninja Multi-Config to run this test");
+        return;
+    }
     let dir = fixture();
     let source = dir.path().join("generated/halideiser");
     fs::write(source.join("CMakeLists.txt"),
