@@ -73,6 +73,9 @@ enum Commands {
         /// Path to the manifest file.
         #[arg(short, long, default_value = "halideiser.toml")]
         manifest: String,
+        /// Run the release configuration (matches build --release).
+        #[arg(long)]
+        release: bool,
         /// Additional arguments passed to the pipeline binary.
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
@@ -85,6 +88,18 @@ enum Commands {
     },
 }
 
+/// Runs the `halideiser` command-line interface and dispatches the selected subcommand.
+///
+/// # Examples
+///
+/// ```
+/// let command = "halideiser info --manifest halideiser.toml";
+/// assert!(command.starts_with("halideiser "));
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the selected subcommand cannot complete successfully.
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -111,9 +126,17 @@ fn main() -> Result<()> {
             let m = manifest::load_manifest(&manifest)?;
             codegen::build(&m, release)?;
         }
-        Commands::Run { manifest, args } => {
+        Commands::Run {
+            manifest,
+            release,
+            args,
+        } => {
             let m = manifest::load_manifest(&manifest)?;
-            codegen::run(&m, &args)?;
+            if release {
+                codegen::run_configuration(&m, true, &args)?;
+            } else {
+                codegen::run(&m, &args)?;
+            }
         }
         Commands::Info { manifest } => {
             let m = manifest::load_manifest(&manifest)?;

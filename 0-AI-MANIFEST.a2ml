@@ -18,7 +18,7 @@ Halideiser makes this separation automatic.
 
 ### Machine-Readable Metadata: `.machine_readable/` ONLY
 
-These 6 a2ml files MUST exist in `.machine_readable/6a2/` directory ONLY:
+These 6 a2ml files MUST exist in `.machine_readable/descriptiles/` directory ONLY:
 1. **STATE.a2ml** - Project state, progress, blockers
 2. **META.a2ml** - Architecture decisions, governance
 3. **ECOSYSTEM.a2ml** - Position in -iser ecosystem, relationships
@@ -88,7 +88,7 @@ halideiser/
 ├── container/                  # Stapeln container ecosystem
 ├── verification/               # Formal verification artifacts
 └── .machine_readable/          # ALL machine-readable metadata
-    ├── 6a2/                    # STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK
+    ├── descriptiles/                    # STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK
     ├── anchors/                # ANCHOR.a2ml
     ├── policies/               # Maintenance policies
     ├── bot_directives/         # Bot instructions
@@ -109,7 +109,7 @@ halideiser/
 
 Read THIS file (0-AI-MANIFEST.a2ml) first.
 Understand canonical location: `.machine_readable/`.
-Read `.machine_readable/6a2/STATE.a2ml` for current status and next actions.
+Read `.machine_readable/descriptiles/STATE.a2ml` for current status and next actions.
 
 ## ATTESTATION PROOF
 
