@@ -96,6 +96,10 @@ enum Commands {
 /// let command = "halideiser info --manifest halideiser.toml";
 /// assert!(command.starts_with("halideiser "));
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if the selected subcommand cannot complete successfully.
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
