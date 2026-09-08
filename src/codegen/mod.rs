@@ -141,17 +141,6 @@ pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
     Ok(())
 }
 
-/// Runs the generated pipeline in the debug configuration.
-///
-/// # Examples
-///
-/// ```no_run
-/// # fn example(manifest: &Manifest) -> Result<()> {
-/// run(manifest, &[])?;
-/// # Ok(())
-/// # }
-/// ```
-pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
 /// Runs the generated pipeline using the debug configuration.
 ///
 /// # Arguments

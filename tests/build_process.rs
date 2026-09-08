@@ -26,19 +26,6 @@ fn fixture() -> tempfile::TempDir {
 ///
 /// # Examples
 ///
-/// ```
-/// let output = invoke(std::path::Path::new("."), &["--help"]);
-/// assert!(output.status.success());
-/// ```
-///
-/// # Panics
-///
-/// Panics if the process cannot be started.
-fn invoke(doc?)
-/// Runs the `halideiser` binary in the specified directory with the given arguments.
-///
-/// # Examples
-///
 /// ```no_run
 /// let output = invoke(std::path::Path::new("."), &["build"]);
 /// assert!(output.status.success());
