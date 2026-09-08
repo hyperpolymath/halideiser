@@ -4,6 +4,15 @@
 //! This does not certify generated Halide algorithms or their schedules.
 use std::{fs, process::Command};
 
+/// Creates a temporary project fixture with a minimal configuration and generated-output directory.
+///
+/// # Examples
+///
+/// ```
+/// let dir = fixture();
+/// assert!(dir.path().join("halideiser.toml").is_file());
+/// assert!(dir.path().join("generated/halideiser").is_dir());
+/// ```
 fn fixture() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     fs::write(dir.path().join("halideiser.toml"),
@@ -13,6 +22,19 @@ fn fixture() -> tempfile::TempDir {
     dir
 }
 
+/// Runs the `halideiser` binary in the specified directory with the given arguments.
+///
+/// # Examples
+///
+/// ```
+/// let output = invoke(std::path::Path::new("."), &["--help"]);
+/// assert!(output.status.success());
+/// ```
+///
+/// # Panics
+///
+/// Panics if the process cannot be started.
+fn invoke(doc?)
 fn invoke(dir: &std::path::Path, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_halideiser"))
         .current_dir(dir)

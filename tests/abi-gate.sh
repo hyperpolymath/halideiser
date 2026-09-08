@@ -13,6 +13,7 @@ printf 'export fn sample() void {}\nconst Result = enum(c_int) { ok = 0, err = 1
 julia "$repo_root/scripts/abi-ffi-gate.jl" "$fixture"
 cp "$abi" "$fixture/valid.idr"
 cp "$ffi" "$fixture/valid.zig"
+# reject verifies that the ABI/FFI gate rejects the fixture with exit status 1 for the named invalid condition.
 reject() {
   local name="$1" status=0
   julia "$repo_root/scripts/abi-ffi-gate.jl" "$fixture" > "$fixture/result.log" 2>&1 || status=$?

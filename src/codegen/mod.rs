@@ -57,7 +57,27 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Build generated artifacts by invoking CMake + make.
+/// Builds the generated project using CMake.
+///
+/// The build uses `Release` mode when `release` is `true` and `Debug` mode
+/// otherwise.
+///
+/// # Examples
+///
+/// ```ignore
+/// build(&manifest, true)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the manifest is invalid, CMake cannot be started, or
+/// configuration or compilation fails.
+///
+/// # Arguments
+///
+/// * `release` - Selects the `Release` build configuration when `true`;
+///   otherwise selects `Debug`.
 pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
     crate::manifest::validate(manifest)?;
     let build_type = if release { "Release" } else { "Debug" };
@@ -106,12 +126,35 @@ pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
     Ok(())
 }
 
-/// Run the generated pipeline binary.
+/// Runs the generated pipeline in the debug configuration.
+///
+/// # Examples
+///
+/// ```no_run
+/// # fn example(manifest: &Manifest) -> Result<()> {
+/// run(manifest, &[])?;
+/// # Ok(())
+/// # }
+/// ```
+pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
     run_configuration(manifest, false, args)
 }
 
-/// Run the selected configuration, matching the build command's mode.
+/// Executes the generated pipeline runner using the selected build configuration.
+///
+/// Returns an error if the manifest is invalid, the runner cannot be started, or
+/// the pipeline exits unsuccessfully.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use crate::codegen::run_configuration;
+/// # use crate::manifest::Manifest;
+/// # let manifest: Manifest = todo!();
+/// run_configuration(&manifest, false, &[])?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn run_configuration(manifest: &Manifest, release: bool, args: &[String]) -> Result<()> {
     crate::manifest::validate(manifest)?;
     println!(

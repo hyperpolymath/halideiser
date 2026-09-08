@@ -88,6 +88,14 @@ enum Commands {
     },
 }
 
+/// Runs the `halideiser` command-line interface and dispatches the selected subcommand.
+///
+/// # Examples
+///
+/// ```
+/// let command = "halideiser info --manifest halideiser.toml";
+/// assert!(command.starts_with("halideiser "));
+/// ```
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {

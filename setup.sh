@@ -127,7 +127,7 @@ detect_platform() {
     esac
 }
 
-# ── Install just ──
+# install_just installs the `just` task runner using the detected package manager, or reports failure when it is unavailable.
 install_just() {
     if command -v just >/dev/null 2>&1; then
         ok "just already installed: $(just --version 2>/dev/null | head -1)"
