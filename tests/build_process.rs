@@ -35,6 +35,18 @@ fn fixture() -> tempfile::TempDir {
 ///
 /// Panics if the process cannot be started.
 fn invoke(doc?)
+/// Runs the `halideiser` binary in the specified directory with the given arguments.
+///
+/// # Examples
+///
+/// ```no_run
+/// let output = invoke(std::path::Path::new("."), &["build"]);
+/// assert!(output.status.success());
+/// ```
+///
+/// # Panics
+///
+/// Panics if the process cannot be started.
 fn invoke(dir: &std::path::Path, args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_halideiser"))
         .current_dir(dir)

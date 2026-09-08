@@ -76,7 +76,7 @@ detect_shell() {
     printf "%s" "$CURRENT_SHELL"
 }
 
-# ── Platform Detection ──
+# detect_platform identifies the operating system, distribution, architecture, and available package manager, storing the results in global variables.
 detect_platform() {
     OS="unknown"
     DISTRO="unknown"
@@ -127,7 +127,7 @@ detect_platform() {
     esac
 }
 
-# install_just installs the `just` task runner using the detected package manager, or reports failure when it is unavailable.
+# install_just installs the `just` task runner using the detected package manager and reports whether installation succeeded.
 install_just() {
     if command -v just >/dev/null 2>&1; then
         ok "just already installed: $(just --version 2>/dev/null | head -1)"

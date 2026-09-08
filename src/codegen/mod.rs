@@ -18,13 +18,28 @@ use std::path::Path;
 
 use crate::manifest::Manifest;
 
-/// Generate all artifacts: Halide C++ source, schedule, and CMakeLists.txt.
+/// Generates the Halide generator source, runner source, and CMake configuration files.
 ///
-/// Output directory structure:
-///   <output_dir>/
-///     <name>_generator.cpp    — Halide generator (algorithm + schedule)
-///     <name>_runner.cpp       — Runner that loads input, runs pipeline, writes output
-///     CMakeLists.txt          — Build configuration for Halide
+/// The files are written to `output_dir` using the project name from the manifest:
+/// `<name>_generator.cpp`, `<name>_runner.cpp`, and `CMakeLists.txt`.
+///
+/// # Arguments
+///
+/// * `manifest` - Project manifest containing the pipeline and generation settings.
+/// * `output_dir` - Directory in which to write the generated files.
+///
+/// # Errors
+///
+/// Returns an error if the pipeline is invalid, the output directory cannot be created,
+/// or any generated file cannot be written.
+///
+/// # Examples
+///
+/// ```no_run
+/// # let manifest: Manifest = todo!();
+/// generate_all(&manifest, "generated")?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     let out = Path::new(output_dir);
     fs::create_dir_all(out).context("Failed to create output directory")?;
@@ -137,6 +152,23 @@ pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
 /// # }
 /// ```
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
+/// Runs the generated pipeline using the debug configuration.
+///
+/// # Arguments
+///
+/// * `args` - Arguments passed to the generated runner.
+///
+/// # Returns
+///
+/// `Ok(())` if the pipeline completes successfully; otherwise, an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// let manifest = Manifest::default();
+/// run(&manifest, &[])?;
+/// # Ok::<(), _>(())
+/// ```
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
     run_configuration(manifest, false, args)
 }
