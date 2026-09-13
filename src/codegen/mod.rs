@@ -18,13 +18,28 @@ use std::path::Path;
 
 use crate::manifest::Manifest;
 
-/// Generate all artifacts: Halide C++ source, schedule, and CMakeLists.txt.
+/// Generates the Halide generator source, runner source, and CMake configuration files.
 ///
-/// Output directory structure:
-///   <output_dir>/
-///     <name>_generator.cpp    — Halide generator (algorithm + schedule)
-///     <name>_runner.cpp       — Runner that loads input, runs pipeline, writes output
-///     CMakeLists.txt          — Build configuration for Halide
+/// The files are written to `output_dir` using the project name from the manifest:
+/// `<name>_generator.cpp`, `<name>_runner.cpp`, and `CMakeLists.txt`.
+///
+/// # Arguments
+///
+/// * `manifest` - Project manifest containing the pipeline and generation settings.
+/// * `output_dir` - Directory in which to write the generated files.
+///
+/// # Errors
+///
+/// Returns an error if the pipeline is invalid, the output directory cannot be created,
+/// or any generated file cannot be written.
+///
+/// # Examples
+///
+/// ```no_run
+/// # let manifest: Manifest = todo!();
+/// generate_all(&manifest, "generated")?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     let out = Path::new(output_dir);
     fs::create_dir_all(out).context("Failed to create output directory")?;
@@ -57,22 +72,112 @@ pub fn generate_all(manifest: &Manifest, output_dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Build generated artifacts by invoking CMake + make.
+/// Builds the generated project using CMake.
+///
+/// The build uses `Release` mode when `release` is `true` and `Debug` mode
+/// otherwise.
+///
+/// # Examples
+///
+/// ```ignore
+/// build(&manifest, true)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// # Errors
+///
+/// Returns an error if the manifest is invalid, CMake cannot be started, or
+/// configuration or compilation fails.
+///
+/// # Arguments
+///
+/// * `release` - Selects the `Release` build configuration when `true`;
+///   otherwise selects `Debug`.
 pub fn build(manifest: &Manifest, release: bool) -> Result<()> {
+    crate::manifest::validate(manifest)?;
     let build_type = if release { "Release" } else { "Debug" };
     println!(
         "Building {} ({} mode) — target: {}",
         manifest.project.name, build_type, manifest.target.arch
     );
-    println!(
-        "  Run: cd generated/halideiser && cmake -B build -DCMAKE_BUILD_TYPE={} && cmake --build build",
-        build_type
+    let source_dir = Path::new("generated/halideiser");
+    let build_dir = source_dir.join("build");
+    // Give single- and multi-configuration generators the same runtime layout.
+    // The per-configuration variable prevents CMake appending another Release/
+    // or Debug/ directory when using Ninja Multi-Config or Visual Studio.
+    let runtime_dir = std::env::current_dir()?
+        .join(&build_dir)
+        .join("bin")
+        .join(build_type);
+    let configure = std::process::Command::new("cmake")
+        .arg("-S")
+        .arg(source_dir)
+        .arg("-B")
+        .arg(&build_dir)
+        .arg(format!("-DCMAKE_BUILD_TYPE={build_type}"))
+        .arg(format!(
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY={}",
+            runtime_dir.display()
+        ))
+        .arg(format!(
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}",
+            build_type.to_uppercase(),
+            runtime_dir.display()
+        ))
+        .status()
+        .context("Failed to start CMake configuration")?;
+    anyhow::ensure!(
+        configure.success(),
+        "CMake configuration failed: {configure}"
     );
+    let compile = std::process::Command::new("cmake")
+        .arg("--build")
+        .arg(&build_dir)
+        .arg("--config")
+        .arg(build_type)
+        .status()
+        .context("Failed to start CMake build")?;
+    anyhow::ensure!(compile.success(), "CMake build failed: {compile}");
     Ok(())
 }
 
-/// Run the generated pipeline binary.
+/// Runs the generated pipeline using the debug configuration.
+///
+/// # Arguments
+///
+/// * `args` - Arguments passed to the generated runner.
+///
+/// # Returns
+///
+/// `Ok(())` if the pipeline completes successfully; otherwise, an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// let manifest = Manifest::default();
+/// run(&manifest, &[])?;
+/// # Ok::<(), _>(())
+/// ```
 pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
+    run_configuration(manifest, false, args)
+}
+
+/// Executes the generated pipeline runner using the selected build configuration.
+///
+/// Returns an error if the manifest is invalid, the runner cannot be started, or
+/// the pipeline exits unsuccessfully.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use crate::codegen::run_configuration;
+/// # use crate::manifest::Manifest;
+/// # let manifest: Manifest = todo!();
+/// run_configuration(&manifest, false, &[])?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+pub fn run_configuration(manifest: &Manifest, release: bool, args: &[String]) -> Result<()> {
+    crate::manifest::validate(manifest)?;
     println!(
         "Running {} pipeline ({} stages)",
         manifest.project.name,
@@ -81,9 +186,23 @@ pub fn run(manifest: &Manifest, args: &[String]) -> Result<()> {
     if !args.is_empty() {
         println!("  Extra args: {}", args.join(" "));
     }
-    println!(
-        "  Run: ./generated/halideiser/build/{}_runner <input> <output>",
-        manifest.project.name
-    );
+    let build_type = if release { "Release" } else { "Debug" };
+    let binary = Path::new("generated/halideiser/build/bin")
+        .join(build_type)
+        .join(format!(
+            "{}_runner{}",
+            manifest.project.name,
+            std::env::consts::EXE_SUFFIX
+        ));
+    let status = std::process::Command::new(&binary)
+        .args(args)
+        .status()
+        .with_context(|| {
+            format!(
+                "Failed to execute {}; build the pipeline first",
+                binary.display()
+            )
+        })?;
+    anyhow::ensure!(status.success(), "Pipeline execution failed: {status}");
     Ok(())
 }

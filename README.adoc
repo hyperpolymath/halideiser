@@ -151,7 +151,7 @@ halideiser generate
 halideiser build --release
 
 # Run the pipeline
-halideiser run -- input.png output.png
+halideiser run --release -- input.png output.png
 ----
 
 == License
